@@ -1,37 +1,39 @@
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+FROM nvidia/cuda:13.3.1-devel-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    software-properties-common \
     git \
     curl \
+    ca-certificates \
     build-essential \
-    && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt-get update && apt-get install -y --no-install-recommends \
     python3.12 \
-    python3.12-venv \
     python3.12-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN curl -sSL https://raw.githubusercontent.com/pypa/get-pip/3b73145063be545b649ad9ca83ea8da5fc915a4f/public/get-pip.py -o /tmp/get-pip.py \
-    && echo "a341e1a43e38001c551a1508a73ff23636a11970b61d901d9a1cad2a18f57055  /tmp/get-pip.py" | sha256sum -c - \
-    && python /tmp/get-pip.py \
-    && rm /tmp/get-pip.py \
-    && update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.12 1
+# Create isolated Python environment
+RUN uv venv /opt/venv --python /usr/bin/python3.12
 
-RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel
+# Install PyTorch CUDA 13.0
+RUN UV_HTTP_TIMEOUT=600 \
+    UV_HTTP_RETRIES=10 \
+    uv pip install \
+    --python /opt/venv/bin/python \
+    torch==2.12.0 \
+    torchvision==0.27.0 \
+    --index-url https://download.pytorch.org/whl/cu130 \
+    --system-certs
 
-RUN python -m pip install --no-cache-dir \
-    torch==2.6.0+cu124 \
-    torchvision==0.21.0+cu124 \
-    torchaudio==2.6.0+cu124 \
-    --index-url https://download.pytorch.org/whl/cu124
-
-RUN python -m pip install --no-cache-dir \
+# Install remaining AI dependencies
+RUN uv pip install \
+    --python /opt/venv/bin/python \
     numpy \
     pandas \
     scikit-learn \
@@ -40,11 +42,13 @@ RUN python -m pip install --no-cache-dir \
     transformers \
     datasets \
     accelerate \
-    safetensors
+    safetensors \
+    qdrant-client \
+    flask
 
 WORKDIR /workspace
 
-VOLUME ["/workspace", "/models"]
+VOLUME ["/workspace", "/models", "/datasets"]
 
 EXPOSE 8888
 
