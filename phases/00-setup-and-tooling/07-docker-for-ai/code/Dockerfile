@@ -26,8 +26,8 @@ RUN UV_HTTP_TIMEOUT=600 \
     UV_HTTP_RETRIES=10 \
     uv pip install \
     --python /opt/venv/bin/python \
-    torch==2.12.0 \
-    torchvision==0.27.0 \
+    torch==2.13.0 \
+    torchvision==0.28.0 \
     --index-url https://download.pytorch.org/whl/cu130 \
     --system-certs
 

@@ -10,5 +10,5 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-torch = ["torch>=2.3", "torchvision>=0.18"]
+torch = ["torch==2.13.0", "torchvision==0.28.0"]
 llm = ["anthropic>=0.39", "openai>=1.50"]
